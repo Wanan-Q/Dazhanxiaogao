@@ -1,4 +1,4 @@
-# 接物小游戏
+# 大战小高
 
 移动端竖屏接物小游戏，支持本地离线运行，可打包分发给朋友直接玩耍。
 
@@ -20,6 +20,7 @@ minigame/
 │   ├── hyr.png     # 普普（可替换）
 │   ├── star_yes.png  # 西达肯定（可替换）
 │   ├── gjh.png     # 小高（可替换）
+│   ├── gjh_coming.png # 大号小高（不限时模式 70 分以上出现，可替换）
 │   ├── star_no.png # 西达否定（可替换）
 │   └── background.png  # 背景图（可选，建议 9:16 比例如 450×800）
 └── README.md       # 本说明文件
@@ -38,22 +39,27 @@ minigame/
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `baseFallSpeed` | 基础掉落速度 | 2 |
+| `baseFallSpeed` | 基础掉落速度 | 2.5 |
 | `speedIncreasePer100` | 每 100 分速度提升比例 | 0.1 |
 | `maxSpeedMultiplier` | 最大速度倍数 | 2.5 |
-| `basePenaltyChance` | 惩罚道具初始概率 | 0.1 |
-| `maxPenaltyChance` | 惩罚道具最高概率 | 0.3 |
-| `spawnInterval` | 物品生成间隔(ms) | 1200 |
-| `minSpawnInterval` | 最小生成间隔(ms) | 400 |
+| `basePenaltyChance` | 惩罚道具初始概率 | 0.2 |
+| `maxPenaltyChance` | 惩罚道具最高概率 | 0.35 |
+| `penaltyChancePer100` | 每 100 分惩罚概率增量 | 0.02 |
+| `spawnInterval` | 物品生成间隔(ms) | 240 |
+| `minSpawnInterval` | 最小生成间隔(ms) | 80 |
+| `spawnIntervalDecrease` | 每 100 分生成间隔减少(ms) | 20 |
 | `initialLives` | 初始生命值 | 3 |
 | `timedModeDuration` | 限时模式时长(秒) | 60 |
-| `timedModeSpeedMultiplier` | 限时模式速度倍数 | 1.6 |
-| `timedModeSpawnInterval` | 限时模式物品生成间隔(ms) | 800 |
+| `timedModeSpeedMultiplier` | 限时模式速度倍数 | 1.15 |
+| `timedModeSpawnInterval` | 限时模式物品生成间隔(ms) | 280 |
+| `timedModeMinSpawnInterval` | 限时模式最小生成间隔(ms) | 140 |
 | `pupuValue` | 普普单个计分 | 1 |
 | `xidakendingValue` | 西达肯定单个计分 | 3 |
 | `xiaogaoPenalty` | 小高扣分 | 10 |
-| `scoreItemWeights.pupu` | 普普出现权重 | 0.75 |
-| `scoreItemWeights.xidakending` | 西达肯定出现权重 | 0.25 |
+| `scoreItemWeights.pupu` | 普普出现权重 | 0.92 |
+| `scoreItemWeights.xidakending` | 西达肯定出现权重 | 0.08 |
+| `penaltyItemWeights.xiaogao` | 惩罚道具中小高权重 | 0.7 |
+| `penaltyItemWeights.xidafouding` | 惩罚道具中西达否定权重 | 0.3 |
 
 修改后保存文件即可生效。
 
