@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>大战小高</title>
+  <style>
+    /* ========== 基础样式 ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      user-select: none;
+    }
+    body { background: #000; color: #00FFFF; }
+
+    /* ========== 屏幕容器 ========== */
+    #app {
+      width: 100%;
+      min-width: 320px;
+      max-width: 450px;
+      height: 100vh;
+      max-height: 100dvh;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* ========== 开始界面 ========== */
+    #startScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #000;
+      z-index: 10;
+    }
+    #startScreen h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #00FFFF;
+      text-shadow: 0 2px 8px rgba(0, 255, 255, 0.4);
+    }
+    #startScreen .subtitle { font-size: 14px; color: #00FFFF; margin-bottom: 30px; opacity: 0.9; }
+    #startScreen .highScore {
+      font-size: 18px;
+      color: #00FFFF;
+      margin-bottom: 40px;
+    }
+    #startScreen .highScore span { font-weight: bold; }
+    .btn {
+      padding: 14px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: #00FFFF;
+      color: #000;
+      box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn:active { transform: scale(0.96); }
+
+    /* ========== 游戏界面 ========== */
+    #gameScreen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      z-index: 5;
+    }
+    #gameScreen.active { display: flex; }
+
+    /* 游戏区域头部（分数、生命） */
+    .gameHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.6);
+      flex-shrink: 0;
+    }
+    .gameHeader .headerLeft { display: flex; align-items: center; flex-shrink: 0; }
+    .gameHeader .headerCenter { flex: 1; display: flex; justify-content: center; min-width: 0; }
+    .gameHeader .headerRight { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .gameHeader .pauseBtn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: rgba(0,255,255,0.2);
+      color: #00FFFF;
+      border: 1px solid rgba(0,255,255,0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .gameHeader .pauseBtn:active { opacity: 0.8; }
+    .gameHeader .exitBtn { color: #00FFFF; }
+    .gameHeader .countdown {
+      font-size: 22px;
+      font-weight: bold;
+      color: #00FFFF;
+      min-width: 70px;
+      text-align: center;
+    }
+    .gameHeader .countdown.low { color: #ff6b6b; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.6; } }
+    .gameHeader .score { font-size: 18px; font-weight: bold; color: #00FFFF; }
+    .gameHeader .lives {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .gameHeader .lives span {
+      width: 24px;
+      height: 24px;
+      background: #00FFFF;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .gameHeader .lives span.lost { background: #444; opacity: 0.5; }
+
+    /* 游戏画布区域 */
+    .gameArea {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+    .gameArea.hasBg { background-size: cover; background-position: center; }
+
+    /* 接物篮 */
+    #basket {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 104px;
+      height: 104px;
+      z-index: 20;
+      outline: none;
+    }
+    #basket img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      outline: none;
+      pointer-events: none;
+    }
+    #basket .placeholder {
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: #00FFFF;
+      border-radius: 12px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
+    #basket .placeholder.show { display: flex; }
+
+    /* 掉落物品通用样式 */
+    .fallingItem {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      pointer-events: none;
+      z-index: 15;
+    }
+    .fallingItem.large { width: 62px; height: 62px; }
+    .fallingItem .placeholder {
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .fallingItem .placeholder.show { display: flex; }
+    .fallingItem img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* 加分道具占位色 */
+    .fallingItem[data-type="pupu"] .placeholder { background: linear-gradient(135deg, #ffd700, #ffb700); }
+    .fallingItem[data-type="xidakending"] .placeholder { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); }
+    /* 惩罚道具占位色 */
+    .fallingItem[data-type="xiaogao"] .placeholder { background: linear-gradient(135deg, #333, #555); }
+    .fallingItem[data-type="xidafouding"] .placeholder { background: linear-gradient(135deg, #888, #666); }
+
+    /* ========== 小高提示文字 ========== */
+    .xiaogaoToast {
+      position: absolute;
+      left: 50%;
+      top: 35%;
+      transform: translate(-50%, -50%);
+      font-size: 26px;
+      font-weight: bold;
+      color: #00FFFF;
+      text-align: center;
+      z-index: 60;
+      pointer-events: none;
+    }
+
+    /* ========== 暂停遮罩 ========== */
+    #pauseOverlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 50;
+    }
+    #pauseOverlay.show { display: flex; }
+    #pauseOverlay .pauseText { font-size: 24px; color: #00FFFF; margin-bottom: 20px; }
+    #pauseOverlay .resumeBtn { padding: 12px 32px; font-size: 16px; }
+
+    /* ========== 结束界面 ========== */
+    #endScreen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 15;
+    }
+    #endScreen.active { display: flex; }
+    #endScreen h2 { font-size: 24px; margin-bottom: 12px; color: #00FFFF; }
+    #endScreen .finalStatLine { font-size: 18px; color: #00FFFF; margin-bottom: 8px; }
+    #endScreen .finalStatLine span { font-weight: bold; color: #00FFFF; }
+    #endScreen .newRecord { font-size: 14px; color: #00FFFF; margin: 16px 0 30px; }
+    #endScreen .buttons { display: flex; gap: 16px; margin-top: 20px; }
+    #endScreen .btn.secondary { background: #00FFFF; color: #000; box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4); }
+
+    /* ========== 规则说明弹窗 ========== */
+    #rulesPopup {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 100;
+    }
+    #rulesPopup.show { display: flex; }
+    #rulesPopup .popupBox {
+      max-width: 340px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      background: #000;
+      border: 1px solid rgba(0,255,255,0.5);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    #rulesPopup h3 {
+      font-size: 20px;
+      color: #00FFFF;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    #rulesPopup .section {
+      margin-bottom: 16px;
+    }
+    #rulesPopup .sectionTitle {
+      font-size: 15px;
+      color: #00FFFF;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    #rulesPopup .sectionContent {
+      font-size: 14px;
+      color: #00FFFF;
+      line-height: 1.6;
+      opacity: 0.95;
+    }
+    #rulesPopup .scoreList {
+      list-style: none;
+      padding: 0;
+    }
+    #rulesPopup .scoreList li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0,255,255,0.3);
+      display: flex;
+      justify-content: space-between;
+    }
+    #rulesPopup .scoreList li:last-child { border-bottom: none; }
+    #rulesPopup .scoreList .add { color: #00FFFF; }
+    #rulesPopup .scoreList .sub { color: #ff6b6b; }
+    #rulesPopup .popupBtn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 规则说明弹窗 -->
+    <div id="rulesPopup">
+      <div class="popupBox">
+        <h3>游戏说明</h3>
+        <div class="section">
+          <div class="sectionTitle">游戏规则</div>
+          <div class="sectionContent">
+            左右滑动屏幕控制底部接物篮横向移动，接住上方随机掉落的物品。接住普普/西达肯定获得普普，接住小高/西达否定扣分或减少生命。
+          </div>
+        </div>
+        <div class="section">
+          <div class="sectionTitle">计分规则</div>
+          <ul class="scoreList">
+            <li><span>普普</span><span class="add">+1 普普</span></li>
+            <li><span>西达肯定</span><span class="add">+3 普普</span></li>
+            <li><span>西达否定</span><span class="sub">-1 生命</span></li>
+            <li><span>小高</span><span class="sub">-10 普普</span></li>
+          </ul>
+        </div>
+        <div class="section">
+          <div class="sectionTitle">游戏结束</div>
+          <div class="sectionContent">
+            生命值为 0 时游戏结束。普普可为负数。分数越高，物品掉落速度越快，惩罚道具出现概率越高。
+          </div>
+        </div>
+        <div class="section">
+          <div class="sectionTitle">游戏模式</div>
+          <div class="sectionContent" style="margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px">
+              <input type="radio" name="gameMode" value="unlimited" checked> 不限时模式（可随时暂停）
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="radio" name="gameMode" value="timed"> 限时1分钟（倒计时，速度更快）
+            </label>
+          </div>
+        </div>
+        <button class="btn popupBtn" id="rulesConfirmBtn">知道了，开始</button>
+      </div>
+    </div>
+
+    <!-- 开始界面 -->
+    <div id="startScreen">
+      <h1>大战小高</h1>
+      <p class="subtitle">左右滑动接住普普，别让小高抢走普普哦~</p>
+      <p class="highScore">不限时最多普普：<span id="highScoreDisplay">0</span></p>
+      <p class="highScore" style="margin-bottom:20px">限时最多普普：<span id="highScoreDisplayTimed">0</span></p>
+      <button class="btn" id="startBtn">开始游戏</button>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen">
+      <div class="gameHeader">
+        <div class="headerLeft">
+          <button class="pauseBtn" id="pauseBtn" title="暂停">⏸</button>
+          <button class="pauseBtn exitBtn" id="exitBtn" title="退出">✕</button>
+        </div>
+        <div class="headerCenter">
+          <span class="countdown" id="countdownDisplay" style="display:none">1:00</span>
+        </div>
+        <div class="headerRight">
+          <span class="score">普普×<span id="scoreDisplay">0</span></span>
+          <div class="lives" id="livesDisplay"></div>
+        </div>
+      </div>
+      <div id="pauseOverlay">
+        <span class="pauseText">已暂停</span>
+        <button class="btn resumeBtn" id="resumeBtn">继续</button>
+      </div>
+      <div class="gameArea" id="gameArea">
+        <div id="basket">
+          <img src="images/basket.png" alt="聚宝盆" draggable="false" onerror="this.style.display='none';this.nextElementSibling.classList.add('show')">
+          <div class="placeholder">聚宝盆</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结束界面 -->
+    <div id="endScreen">
+      <h2>游戏结束</h2>
+      <div id="finalStats">
+        <p class="finalStatLine" id="finalPupuLine">接到0只普普</p>
+        <p class="finalStatLine">接到<span id="finalXiaogaoCount">0</span>只小高</p>
+        <p class="finalStatLine">获得<span id="finalXidakendingCount">0</span>次西达肯定</p>
+      </div>
+      <p class="newRecord" id="newRecordTip" style="display:none">🎉 新纪录！</p>
+      <div class="buttons">
+        <button class="btn" id="restartBtn">重新开始</button>
+        <button class="btn secondary" id="homeBtn">返回首页</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* ============================================
+   大战小高 - 核心逻辑
+   ============================================ */
+
+(function() {
+  'use strict';
+
+  // ========== 游戏配置（可修改） ==========
+  const CONFIG = {
+    basketWidth: 104,
+    basketHeight: 104,
+    itemSize: 48,
+    itemSizeLarge: 62,
+    baseFallSpeed: 2.5,
+    fastItemSpeedMultiplier: 1.4,
+    speedIncreasePer100: 0.1,
+    maxSpeedMultiplier: 2.5,
+    basePenaltyChance: 0.2,
+    maxPenaltyChance: 0.35,
+    penaltyChancePer100: 0.02,
+    spawnInterval: 240,
+    minSpawnInterval: 80,
+    spawnIntervalDecrease: 20,
+    timedModeDuration: 60,
+    timedModeSpeedMultiplier: 1.15,
+    timedModeSpawnInterval: 280,
+    timedModeMinSpawnInterval: 140,
+    initialLives: 3,
+    pupuValue: 1,
+    xidakendingValue: 3,
+    xiaogaoPenalty: 10,
+    scoreItemWeights: { pupu: 0.92, xidakending: 0.08 },
+    penaltyItemWeights: { xiaogao: 0.7, xidafouding: 0.3 },
+    lifePenalties: { xiaogao: 0, xidafouding: 1 },
+    imagePaths: {
+      basket: 'images/basket.png',
+      pupu: 'images/hyr.png',
+      xidakending: 'images/star_yes.png',
+      xiaogao: 'images/gjh.png',
+      xiaogaoComing: 'images/gjh_coming.png',
+      xidafouding: 'images/star_no.png',
+      background: 'images/background.png'
+    }
+  };
+
+  // ========== DOM 元素 ==========
+  const els = {
+    startScreen: document.getElementById('startScreen'),
+    gameScreen: document.getElementById('gameScreen'),
+    endScreen: document.getElementById('endScreen'),
+    gameArea: document.getElementById('gameArea'),
+    basket: document.getElementById('basket'),
+    scoreDisplay: document.getElementById('scoreDisplay'),
+    livesDisplay: document.getElementById('livesDisplay'),
+    highScoreDisplay: document.getElementById('highScoreDisplay'),
+    highScoreDisplayTimed: document.getElementById('highScoreDisplayTimed'),
+    finalPupuLine: document.getElementById('finalPupuLine'),
+    finalXiaogaoCount: document.getElementById('finalXiaogaoCount'),
+    finalXidakendingCount: document.getElementById('finalXidakendingCount'),
+    newRecordTip: document.getElementById('newRecordTip'),
+    startBtn: document.getElementById('startBtn'),
+    restartBtn: document.getElementById('restartBtn'),
+    homeBtn: document.getElementById('homeBtn'),
+    rulesPopup: document.getElementById('rulesPopup'),
+    rulesConfirmBtn: document.getElementById('rulesConfirmBtn'),
+    pauseBtn: document.getElementById('pauseBtn'),
+    exitBtn: document.getElementById('exitBtn'),
+    resumeBtn: document.getElementById('resumeBtn'),
+    pauseOverlay: document.getElementById('pauseOverlay'),
+    countdownDisplay: document.getElementById('countdownDisplay')
+  };
+
+  // ========== 游戏状态 ==========
+  let state = {
+    running: false,
+    paused: false,
+    timedMode: false,
+    timeLeft: 0,
+    lastTickTime: 0,
+    basketX: 0,
+    touchStartX: 0,
+    fallSpeed: CONFIG.baseFallSpeed,
+    lastSpawn: 0,
+    animationId: null,
+    timerId: null,
+    items: [],
+    score: 0,
+    peakScore: 0,
+    pupuCount: 0,
+    xiaogaoCount: 0,
+    xidakendingCount: 0
+  };
+
+  // ========== 音效生成（无外部文件） ==========
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function playSound(type) {
+    try {
+      if (!audioCtx) audioCtx = new (AudioCtx || function() {})();
+      if (!audioCtx || typeof audioCtx.createOscillator !== 'function') return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      if (type === 'catch') {
+        osc.frequency.value = 523;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.15);
+      } else if (type === 'penalty') {
+        osc.frequency.value = 150;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.15);
+      } else if (type === 'gameover') {
+        osc.frequency.value = 200;
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    } catch (e) { /* 静默忽略 */ }
+  }
+
+  function showXiaogaoToast() {
+    const container = els.gameArea;
+    const toast = document.createElement('div');
+    toast.className = 'xiaogaoToast';
+    toast.innerHTML = '小高抢走了<br>10个普普！';
+    container.appendChild(toast);
+    setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 1000);
+  }
+
+  // ========== 震动反馈 ==========
+  function vibrate(pattern) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) { /* 静默忽略 */ }
+  }
+
+  // ========== 初始化 ==========
+  function init() {
+    loadHighScore();
+    calcBasketPosition();
+    bindEvents();
+    renderLives();
+  }
+
+  function loadHighScore() {
+    try {
+      const hs = localStorage.getItem('catchGameHighScore');
+      els.highScoreDisplay.textContent = hs ? parseInt(hs, 10) : 0;
+      const hsTimed = localStorage.getItem('catchGameHighScoreTimed');
+      if (els.highScoreDisplayTimed) els.highScoreDisplayTimed.textContent = hsTimed ? parseInt(hsTimed, 10) : 0;
+    } catch (e) {
+      els.highScoreDisplay.textContent = '0';
+      if (els.highScoreDisplayTimed) els.highScoreDisplayTimed.textContent = '0';
+    }
+  }
+
+  function saveHighScore(score) {
+    try {
+      const key = state.timedMode ? 'catchGameHighScoreTimed' : 'catchGameHighScore';
+      const current = parseInt(localStorage.getItem(key) || '0', 10);
+      if (score > current && score >= 0) {
+        localStorage.setItem(key, String(score));
+        return true;
+      }
+    } catch (e) { /* 静默忽略 */ }
+    return false;
+  }
+
+  function calcBasketPosition() {
+    const area = els.gameArea.getBoundingClientRect();
+    const center = (area.width - CONFIG.basketWidth) / 2;
+    state.basketX = Math.max(0, Math.min(center, area.width - CONFIG.basketWidth));
+    updateBasketStyle();
+  }
+
+  function updateBasketStyle() {
+    els.basket.style.left = state.basketX + 'px';
+    els.basket.style.bottom = '20px';
+    els.basket.style.transform = 'none';
+  }
+
+  // ========== 事件绑定 ==========
+  function bindEvents() {
+    els.startBtn.addEventListener('click', showRulesPopup);
+    els.rulesConfirmBtn.addEventListener('click', function() {
+      const modeRadio = document.querySelector('input[name="gameMode"]:checked');
+      state.timedMode = modeRadio && modeRadio.value === 'timed';
+      els.rulesPopup.classList.remove('show');
+      startGame();
+    });
+    els.restartBtn.addEventListener('click', startGame);
+    els.homeBtn.addEventListener('click', showStartScreen);
+    els.pauseBtn.addEventListener('click', togglePause);
+    els.resumeBtn.addEventListener('click', resumeGame);
+    if (els.exitBtn) els.exitBtn.addEventListener('click', exitGame);
+
+    els.gameArea.addEventListener('touchstart', onTouchStart, { passive: false });
+    els.gameArea.addEventListener('touchmove', onTouchMove, { passive: false });
+    els.gameArea.addEventListener('touchend', onTouchEnd, { passive: false });
+
+    els.gameArea.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    window.addEventListener('resize', debounce(function() {
+      if (state.running) calcBasketPosition();
+    }, 100));
+  }
+
+  function togglePause() {
+    if (!state.running) return;
+    state.paused = !state.paused;
+    if (state.paused) {
+      els.pauseOverlay.classList.add('show');
+      if (state.timerId) clearInterval(state.timerId);
+    } else {
+      els.pauseOverlay.classList.remove('show');
+      if (state.timedMode) startCountdown();
+    }
+  }
+
+  function resumeGame() {
+    if (!state.running || !state.paused) return;
+    state.paused = false;
+    els.pauseOverlay.classList.remove('show');
+    if (state.timedMode) startCountdown();
+  }
+
+  function startCountdown() {
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(function() {
+      if (state.paused) return;
+      state.timeLeft--;
+      renderCountdown();
+      if (state.timeLeft <= 0) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+        gameOver();
+      }
+    }, 1000);
+  }
+
+  function renderCountdown() {
+    const m = Math.floor(state.timeLeft / 60);
+    const s = state.timeLeft % 60;
+    els.countdownDisplay.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    els.countdownDisplay.classList.toggle('low', state.timeLeft <= 10);
+  }
+
+  function onTouchStart(e) {
+    if (!state.running || state.paused) return;
+    e.preventDefault();
+    state.touchStartX = e.touches[0].clientX;
+  }
+
+  function onTouchMove(e) {
+    if (!state.running || state.paused) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - state.touchStartX;
+    state.touchStartX = e.touches[0].clientX;
+    const area = els.gameArea.getBoundingClientRect();
+    state.basketX = Math.max(0, Math.min(area.width - CONFIG.basketWidth, state.basketX + dx));
+    updateBasketStyle();
+  }
+
+  function onTouchEnd() {}
+
+  let mouseDown = false;
+  function onMouseDown(e) {
+    if (!state.running || state.paused) return;
+    e.preventDefault();
+    mouseDown = true;
+    state.touchStartX = e.clientX;
+  }
+  function onMouseMove(e) {
+    if (!state.running || state.paused || !mouseDown) return;
+    e.preventDefault();
+    const dx = e.clientX - state.touchStartX;
+    state.touchStartX = e.clientX;
+    const area = els.gameArea.getBoundingClientRect();
+    state.basketX = Math.max(0, Math.min(area.width - CONFIG.basketWidth, state.basketX + dx));
+    updateBasketStyle();
+  }
+  function onMouseUp(e) {
+    if (mouseDown) {
+      mouseDown = false;
+    }
+  }
+
+  function debounce(fn, delay) {
+    let tid;
+    return function() {
+      clearTimeout(tid);
+      tid = setTimeout(fn, delay);
+    };
+  }
+
+  // ========== 界面切换 ==========
+  function showRulesPopup() {
+    els.rulesPopup.classList.add('show');
+  }
+
+  function showStartScreen() {
+    els.startScreen.style.display = 'flex';
+    els.gameScreen.classList.remove('active');
+    els.endScreen.classList.remove('active');
+    loadHighScore();
+  }
+
+  function showGameScreen() {
+    els.startScreen.style.display = 'none';
+    els.gameScreen.classList.add('active');
+    els.endScreen.classList.remove('active');
+  }
+
+  function showEndScreen() {
+    els.gameScreen.classList.remove('active');
+    els.endScreen.classList.add('active');
+    if (state.score >= 0) {
+      els.finalPupuLine.textContent = '接到' + state.score + '只普普';
+    } else {
+      els.finalPupuLine.textContent = '你倒欠小高' + Math.abs(state.score) + '只普普';
+    }
+    els.finalXiaogaoCount.textContent = state.xiaogaoCount;
+    els.finalXidakendingCount.textContent = state.xidakendingCount;
+    const isNew = saveHighScore(state.score);
+    els.newRecordTip.style.display = isNew ? 'block' : 'none';
+    loadHighScore();
+    playSound('gameover');
+    vibrate([100, 50, 100]);
+  }
+
+  function getEffectiveConfig() {
+    if (state.timedMode) {
+      return {
+        baseFallSpeed: CONFIG.baseFallSpeed * CONFIG.timedModeSpeedMultiplier,
+        spawnInterval: CONFIG.timedModeSpawnInterval,
+        minSpawnInterval: CONFIG.timedModeMinSpawnInterval,
+        speedIncreasePer100: CONFIG.speedIncreasePer100,
+        spawnIntervalDecrease: CONFIG.spawnIntervalDecrease
+      };
+    }
+    return {
+      baseFallSpeed: CONFIG.baseFallSpeed,
+      spawnInterval: CONFIG.spawnInterval,
+      minSpawnInterval: CONFIG.minSpawnInterval,
+      speedIncreasePer100: CONFIG.speedIncreasePer100,
+      spawnIntervalDecrease: CONFIG.spawnIntervalDecrease
+    };
+  }
+
+  function getUnlimitedMilestones() {
+    if (state.timedMode) return { score25: false, score35: false, score50: false, score60: false, score70: false, score80: false, score90: false };
+    var p = state.peakScore;
+    return {
+      score25: p > 25,
+      score35: p > 35,
+      score50: p > 50,
+      score60: p > 60,
+      score70: p > 70,
+      score80: p > 80,
+      score90: p > 90
+    };
+  }
+
+  // ========== 游戏流程 ==========
+  function startGame() {
+    state.running = true;
+    state.paused = false;
+    state.score = 0;
+    state.peakScore = 0;
+    state.pupuCount = 0;
+    state.xiaogaoCount = 0;
+    state.xidakendingCount = 0;
+    state.lives = CONFIG.initialLives;
+    state.fallSpeed = getEffectiveConfig().baseFallSpeed;
+    state.items = [];
+    clearAllItems();
+    state.lastSpawn = performance.now() - (getEffectiveConfig().spawnInterval + 1);
+    state.timeLeft = state.timedMode ? CONFIG.timedModeDuration : 0;
+
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = null;
+
+    showGameScreen();
+    renderScore();
+    renderLives();
+    calcBasketPosition();
+
+    els.pauseOverlay.classList.remove('show');
+    els.countdownDisplay.style.display = state.timedMode ? 'block' : 'none';
+    if (state.timedMode) {
+      renderCountdown();
+      startCountdown();
+    }
+
+    try {
+      const bg = CONFIG.imagePaths.background;
+      const img = new Image();
+      img.onload = function() {
+        els.gameArea.style.backgroundImage = 'url(' + bg + ')';
+        els.gameArea.classList.add('hasBg');
+      };
+      img.onerror = function() {
+        els.gameArea.style.backgroundImage = 'none';
+        els.gameArea.classList.remove('hasBg');
+      };
+      img.src = bg;
+    } catch (e) {
+      els.gameArea.classList.remove('hasBg');
+    }
+
+    requestAnimationFrame(function() { requestAnimationFrame(gameLoop); });
+  }
+
+  function gameOver() {
+    state.running = false;
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = null;
+    if (state.animationId) cancelAnimationFrame(state.animationId);
+    state.items = [];
+    clearAllItems();
+    showEndScreen();
+  }
+
+  function exitGame() {
+    if (!state.running) return;
+    state.running = false;
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = null;
+    if (state.animationId) cancelAnimationFrame(state.animationId);
+    els.pauseOverlay.classList.remove('show');
+    state.items = [];
+    clearAllItems();
+    showEndScreen();
+  }
+
+  function clearAllItems() {
+    state.items.forEach(function(item) {
+      if (item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el);
+    });
+    state.items = [];
+    var olds = els.gameArea.querySelectorAll('.fallingItem');
+    for (var j = 0; j < olds.length; j++) {
+      if (olds[j].parentNode) olds[j].parentNode.removeChild(olds[j]);
+    }
+  }
+
+  function getItemSize(type) {
+    const m = getUnlimitedMilestones();
+    const base = (type === 'pupu' || type === 'xiaogao') ? CONFIG.itemSizeLarge : CONFIG.itemSize;
+    if (type === 'xiaogao' && m.score70) return Math.round(base * 1.5);
+    return base;
+  }
+
+  // ========== 掉落物品 ==========
+  function createItem() {
+    const area = els.gameArea.getBoundingClientRect();
+    if (area.width <= CONFIG.itemSize || area.height <= 0) return;
+    const m = getUnlimitedMilestones();
+    let penaltyChance = Math.min(
+      CONFIG.maxPenaltyChance,
+      CONFIG.basePenaltyChance + Math.floor(Math.max(0, state.score) / 100) * CONFIG.penaltyChancePer100
+    );
+    if (!state.timedMode) penaltyChance = Math.min(1, penaltyChance * 1.5);
+    if (m.score25) penaltyChance = Math.min(1, penaltyChance * 1.25);
+    if (m.score35) penaltyChance = Math.min(1, penaltyChance * 1.25);
+    const isPenalty = Math.random() < penaltyChance;
+    let type;
+    if (isPenalty) {
+      let wXiaogao = CONFIG.penaltyItemWeights.xiaogao, wXidafouding = CONFIG.penaltyItemWeights.xidafouding;
+      if (m.score25) { wXiaogao = 0.5; wXidafouding = 0.5; }
+      if (m.score35) { wXiaogao = 0.6; wXidafouding = 0.4; }
+      const r = Math.random();
+      type = r < wXiaogao ? 'xiaogao' : 'xidafouding';
+    } else {
+      const r = Math.random();
+      type = r < CONFIG.scoreItemWeights.pupu ? 'pupu' : 'xidakending';
+    }
+
+    const itemSize = getItemSize(type);
+    let spawnX;
+    if (type === 'xiaogao') {
+      const pupuItems = state.items.filter(function(it) { return it.type === 'pupu'; });
+      if (pupuItems.length > 0) {
+        const ref = pupuItems[Math.floor(Math.random() * pupuItems.length)];
+        const offset = (Math.random() - 0.5) * 56;
+        spawnX = Math.max(0, Math.min(area.width - itemSize, ref.x + offset));
+      } else {
+        spawnX = Math.random() * (area.width - itemSize);
+      }
+    } else {
+      spawnX = Math.random() * (area.width - itemSize);
+    }
+
+    let spawnY = -itemSize;
+    if (type === 'xiaogao' && (m.score80 || m.score90)) {
+      const pct = m.score90 ? 0.5 : 0.3;
+      if (Math.random() < pct) spawnY = area.height / 3;
+    }
+    const el = document.createElement('div');
+    el.className = 'fallingItem' + (itemSize >= CONFIG.itemSizeLarge ? ' large' : '');
+    if (itemSize > CONFIG.itemSizeLarge) {
+      el.style.width = itemSize + 'px';
+      el.style.height = itemSize + 'px';
+    }
+    el.dataset.type = type;
+    el.style.left = spawnX + 'px';
+    el.style.top = spawnY + 'px';
+
+    const img = document.createElement('img');
+    img.src = (type === 'xiaogao' && m.score70) ? (CONFIG.imagePaths.xiaogaoComing || CONFIG.imagePaths.xiaogao) : (CONFIG.imagePaths[type] || '');
+    img.alt = type;
+    img.onerror = function() {
+      img.style.display = 'none';
+      const ph = el.querySelector('.placeholder');
+      if (ph) ph.classList.add('show');
+    };
+
+    const ph = document.createElement('div');
+    ph.className = 'placeholder';
+    const labels = { pupu: '普普', xidakending: '西达肯定', xiaogao: '小高', xidafouding: '西达否定' };
+    ph.textContent = labels[type] || type;
+
+    el.appendChild(img);
+    el.appendChild(ph);
+    els.gameArea.appendChild(el);
+
+    var itemSpeed = (type === 'xidakending' || type === 'xiaogao' || type === 'xidafouding')
+      ? state.fallSpeed * CONFIG.fastItemSpeedMultiplier : state.fallSpeed;
+    if (type === 'xiaogao' && m.score90) itemSpeed *= 1.2;
+    state.items.push({
+      el: el,
+      type: type,
+      y: spawnY,
+      x: spawnX,
+      size: itemSize,
+      speed: itemSpeed,
+      isPenalty: isPenalty
+    });
+  }
+
+  // ========== 碰撞检测 ==========
+  function checkCollision(item) {
+    const bx = state.basketX;
+    const by = els.gameArea.getBoundingClientRect().height - 20 - CONFIG.basketHeight;
+    const margin = 8;
+    const basketShrink = 0.15;
+    const basketLeft = bx + CONFIG.basketWidth * basketShrink;
+    const basketRight = bx + CONFIG.basketWidth * (1 - basketShrink);
+    const sz = item.size || CONFIG.itemSize;
+    const shrink = item.isPenalty ? 0.1 : 0;
+    const itemLeft = item.x + sz * shrink;
+    const itemRight = item.x + sz * (1 - shrink);
+    return itemRight > basketLeft + margin &&
+           itemLeft < basketRight - margin &&
+           item.y + sz > by &&
+           item.y < by + CONFIG.basketHeight;
+  }
+
+  // ========== 渲染 ==========
+  function renderScore() {
+    els.scoreDisplay.textContent = state.score;
+  }
+
+  function renderLives() {
+    let html = '';
+    for (let i = 0; i < CONFIG.initialLives; i++) {
+      html += '<span' + (i >= state.lives ? ' class="lost"' : '') + '></span>';
+    }
+    els.livesDisplay.innerHTML = html;
+  }
+
+  // ========== 游戏主循环 ==========
+  function gameLoop(timestamp) {
+    if (!state.running || state.paused) {
+      state.animationId = requestAnimationFrame(gameLoop);
+      return;
+    }
+
+    const area = els.gameArea.getBoundingClientRect();
+    if (area.height <= 0 || area.width <= CONFIG.itemSize) {
+      state.animationId = requestAnimationFrame(gameLoop);
+      return;
+    }
+    const cfg = getEffectiveConfig();
+
+    let baseSpeed = Math.min(
+      cfg.baseFallSpeed * CONFIG.maxSpeedMultiplier,
+      cfg.baseFallSpeed + Math.floor(Math.max(0, state.score) / 100) * cfg.speedIncreasePer100 * cfg.baseFallSpeed
+    );
+    const m = getUnlimitedMilestones();
+    if (m.score60) baseSpeed *= 1.2;
+    state.fallSpeed = baseSpeed;
+
+    const now = performance.now();
+    const spawnInterval = Math.max(
+      cfg.minSpawnInterval,
+      cfg.spawnInterval - Math.floor(Math.max(0, state.score) / 100) * cfg.spawnIntervalDecrease
+    );
+    if (now - state.lastSpawn > spawnInterval) {
+      createItem();
+      state.lastSpawn = now;
+    }
+
+    for (let i = state.items.length - 1; i >= 0; i--) {
+      const item = state.items[i];
+      item.y += item.speed;
+      item.el.style.top = item.y + 'px';
+
+      if (item.y > area.height) {
+        if (item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el);
+        state.items.splice(i, 1);
+        continue;
+      }
+
+      if (checkCollision(item)) {
+        if (item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el);
+        state.items.splice(i, 1);
+
+        if (item.type === 'pupu') {
+          state.score += CONFIG.pupuValue;
+          state.peakScore = Math.max(state.peakScore, state.score);
+          state.pupuCount++;
+          playSound('catch');
+        } else if (item.type === 'xidakending') {
+          state.score += CONFIG.xidakendingValue;
+          state.peakScore = Math.max(state.peakScore, state.score);
+          state.xidakendingCount++;
+          playSound('catch');
+        } else if (item.type === 'xiaogao') {
+          state.peakScore = Math.max(state.peakScore, state.score);
+          state.score -= CONFIG.xiaogaoPenalty;
+          state.xiaogaoCount++;
+          state.lives -= CONFIG.lifePenalties.xiaogao || 0;
+          showXiaogaoToast();
+          playSound('penalty');
+        } else if (item.type === 'xidafouding') {
+          state.lives -= CONFIG.lifePenalties.xidafouding || 0;
+          playSound('penalty');
+        }
+
+        renderScore();
+        renderLives();
+
+        if (state.lives <= 0) {
+          gameOver();
+          return;
+        }
+      }
+    }
+
+    const ms = getUnlimitedMilestones();
+    state.items.forEach(function(item) {
+      item.speed = (item.type === 'xidakending' || item.type === 'xiaogao' || item.type === 'xidafouding')
+        ? state.fallSpeed * CONFIG.fastItemSpeedMultiplier : state.fallSpeed;
+      if (item.type === 'xiaogao' && ms.score90) item.speed *= 1.2;
+    });
+
+    state.animationId = requestAnimationFrame(gameLoop);
+  }
+
+  // ========== 启动 ==========
+  init();
+})();
+  </script>
+</body>
+</html>
